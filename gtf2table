@@ -1,0 +1,66 @@
+#!/usr/bin/perl
+# ============================================
+#  Flatting the gencode 19 GTF to a table
+#
+# =========================================
+use strict;
+use warnings;
+use v5.010;
+use Data::Dumper;
+use Getopt::Long;
+
+my %GENCODE_ATTR = map { $_ => 1} qw ( gene_id transcript_id gene_type gene_status gene_name transcript_type 
+                                      transcript_name exon_number exon_id level tag ccdsid havana_gene havana_transcript 
+                                    protein_id ont transcript_support_level);
+my $TAGS = undef;
+my $GTF = undef;
+my $FEATURE = undef;
+my $usage = <<"USAGE";
+usage : $0 --feature <features in gencode19> --tags <attr tags in gencode19> --gtf <GTF file> 
+USAGE
+
+#TODO Add range search;
+GetOptions( "tag=s" => \$TAGS,
+            "gtf|g=s" => \$GTF,
+            "feature|f=s" => \$FEATURE,
+          );
+            
+unless ( $TAGS or $GTF or $FEATURE ) { 
+    die "$usage";
+}
+
+open INPUT, "<$GTF" or die "Can not open $GTF\n";
+my @seen_tags;
+my @tags_needs = &parse_tags($TAGS);
+say "chrom\tstart\tend\tstrand\t". join ("\t", @tags_needs);
+while (<INPUT>) {
+  my @F = split /\t/;
+  chomp;
+  next if /^#/;
+  # Filter feature
+  next if ($F[2] ne $FEATURE) ;
+  
+  # Select tag
+  my @seen_tags = map { $F[8] =~ /$_ \"([^\"]+)\"/; my $res = $1; $res }  @tags_needs;
+
+  # Basic formation
+  my $chrom = $F[0];
+  my $start = $F[3];
+  my $end = $F[4];
+  my $strand = $F[6];
+
+  my $res = "$chrom\t$start\t$end\t$strand\t". join ("\t", @seen_tags);
+  say $res;
+}
+
+
+#'chomp; next if $F[2] ne "transcript"; $F[8] =~ /transcript_name \"([^\"]+)\"/; $gname = $1; $F[8] =~ /transcript_id \"([^\"]+)\"/; $gid = $1; print "$gid\t$gname";' \
+
+
+sub parse_tags {
+    my $tags = shift;
+    my @t = split /,/, $tags;
+    return @t;
+}
+
+
