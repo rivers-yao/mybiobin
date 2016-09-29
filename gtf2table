@@ -20,7 +20,7 @@ usage : $0 --feature <features in gencode19> --tags <attr tags in gencode19> --g
 USAGE
 
 #TODO Add range search;
-GetOptions( "tag=s" => \$TAGS,
+GetOptions( "tags=s" => \$TAGS,
             "gtf|g=s" => \$GTF,
             "feature|f=s" => \$FEATURE,
           );
@@ -30,8 +30,14 @@ unless ( $TAGS or $GTF or $FEATURE ) {
 }
 
 open INPUT, "<$GTF" or die "Can not open $GTF\n";
-my @seen_tags;
 my @tags_needs = &parse_tags($TAGS);
+
+my @illegal_tags = grep { ! exists $GENCODE_ATTR{$_} } @tags_needs;
+
+warn "WARNING: tags ". join(",",@illegal_tags). " are not in the GTF arrtibutes, just filtered them\n" if @illegal_tags;
+
+@tags_needs = grep { exists $GENCODE_ATTR{$_} } @tags_needs;
+
 say "chrom\tstart\tend\tstrand\t". join ("\t", @tags_needs);
 while (<INPUT>) {
   my @F = split /\t/;
